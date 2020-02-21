@@ -26,7 +26,8 @@
 
 using namespace std::chrono_literals;
 
-namespace smart_battery_driver {
+namespace smart_battery_driver
+{
 
 class SmartBatteryDriver : public rclcpp::Node
 {
@@ -43,7 +44,8 @@ public:
   }
 
 private:
-  void publish_battery_state() {
+  void publish_battery_state()
+  {
     msg_ = std::make_unique<sensor_msgs::msg::BatteryState>();
 
     RCLCPP_INFO(get_logger(), "Publishing!");
@@ -58,7 +60,8 @@ private:
 
 }  // namespace smart_battery_driver
 
-int main(int argc, char ** argv) {
+int main(int argc, char ** argv)
+{
   setvbuf(stdout, NULL, _IONBF, BUFSIZ);
   rclcpp::init(argc, argv);
   rclcpp::NodeOptions options;
