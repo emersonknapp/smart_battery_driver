@@ -1,0 +1,20 @@
+# Run linters automatically on pull requests.
+name: Lint package
+on:
+  pull_request:
+
+jobs:
+  ament_linters:
+    name: ament_linters
+    runs-on: ubuntu-18.04
+    strategy:
+        fail-fast: false
+        matrix:
+          linter: [copyright, xmllint, cppcheck, cpplint, uncrustify, flake8, pep257]
+    steps:
+    - uses: actions/checkout@v1
+    - uses: ros-tooling/setup-ros@0.0.13
+    - uses: ros-tooling/action-ros-lint@0.0.5
+      with:
+        linter: ${{ matrix.linter }}
+        package-name: smart_battery_driver
