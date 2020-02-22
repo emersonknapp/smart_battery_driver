@@ -72,6 +72,7 @@ enum class BatteryStatusAlarm : unsigned
   OverTemp          = 0x1000,
   RemainingCapacity = 0x0200,
   RemainingTime     = 0x0100,
+  Mask              = 0xFF00,
 };
 
 enum class BatteryStatusError : unsigned

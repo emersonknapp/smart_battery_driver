@@ -85,10 +85,24 @@ private:
   uint8_t interpret_health(int status) const
   {
     using sensor_msgs::msg::BatteryState;
+    using SBS::BatteryStatusAlarm;
+    using SBS::BatteryStatus;
 
-    if (status == 0) {}
+    if (status & static_cast<int>(BatteryStatusAlarm::OverTemp)) {
+      return BatteryState::POWER_SUPPLY_HEALTH_OVERHEAT;
+    }
+    if (status & static_cast<int>(BatteryStatusAlarm::OverCharged)) {
+      return BatteryState::POWER_SUPPLY_HEALTH_OVERVOLTAGE;
+    }
+    if (status & static_cast<int>(BatteryStatus::FullyDischarged)) {
+      return BatteryState::POWER_SUPPLY_HEALTH_DEAD;
+    }
+    if (status & static_cast<int>(BatteryStatusAlarm::Mask)) {
+      // Any alarm set and haven't returned yet
+      return BatteryState::POWER_SUPPLY_HEALTH_UNSPEC_FAILURE;
+    }
 
-    return BatteryState::POWER_SUPPLY_HEALTH_UNKNOWN;
+    return BatteryState::POWER_SUPPLY_HEALTH_GOOD;
   }
 
   uint8_t interpret_chemistry(const std::string & chemistry)
@@ -116,7 +130,6 @@ private:
     msg_->header.stamp = get_clock()->now();
     msg_->voltage = battery_->voltage() / 1000.0;
     msg_->temperature = battery_->temperature();
-    int16_t current = battery_->current();
     msg_->current = battery_->current() / 1000.0;
     msg_->charge = -msg_->current;
     msg_->capacity = battery_->fullChargeCapacity() / 1000.0;
