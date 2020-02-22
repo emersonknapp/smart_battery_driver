@@ -18,7 +18,6 @@
 #include <utility>
 
 #include "rclcpp/rclcpp.hpp"
-#include "rclcpp_components/register_node_macro.hpp"
 
 #include "sensor_msgs/msg/battery_state.hpp"
 
