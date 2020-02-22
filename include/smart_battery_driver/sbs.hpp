@@ -20,6 +20,10 @@ public:
   SmartBattery(unsigned int i2cbus, unsigned int address);
   virtual ~SmartBattery() = default;
 
+  bool manufacurerName(std::string & data);
+  bool deviceName(std::string & data);
+  bool cellChemistry(std::string & data);
+
 private:
   int i2cbus_;
   int address_;
