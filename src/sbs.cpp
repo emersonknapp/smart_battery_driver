@@ -1,3 +1,16 @@
+// Copyright 2020 Emerson Knapp
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 #include <sys/ioctl.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -12,6 +25,8 @@ extern "C" {
   #include <i2c/smbus.h>
 }
 
+#include <string>
+
 #include "smart_battery_driver/sbs.hpp"
 
 namespace SBS
@@ -21,7 +36,7 @@ namespace SBS
 
 int check_smbus_capabilities(int file)
 {
-  unsigned long funcs;
+  uint32_t funcs;
 
   /* check adapter functionality */
   if (ioctl(file, I2C_FUNCS, &funcs) < 0) {
@@ -52,7 +67,6 @@ int check_smbus_capabilities(int file)
   }
 
   return 0;
-
 }
 
 int open_i2c_dev(int i2cbus, char * filename, size_t size, bool quiet)
@@ -144,7 +158,7 @@ bool SmartBattery::cellChemistry(std::string & data) const
 
 int SmartBattery::readWord(SBSCommand command) const
 {
-  int res = i2c_smbus_read_word_data(file_, (int)command);
+  int res = i2c_smbus_read_word_data(file_, static_cast<int>(command));
   if (res < 0) {
     fprintf(stderr, "Error: Read failed\n");
   }
@@ -191,4 +205,4 @@ float SmartBattery::temperature() const
   return (readWord(SBSCommand::Temperature) * 0.1) - 273.15;
 }
 
-}  // namespace sbs
+}  // namespace SBS

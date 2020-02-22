@@ -41,7 +41,7 @@ enum class SBSCommand
   RunTimeToEmpty = 0x11,
   AverageTimeToEmpty = 0x12,
   AverageTimeToFull = 0x13,
-  ChargingCurrent= 0x14,
+  ChargingCurrent = 0x14,
   ChargingVoltage = 0x15,
   BatteryStatus = 0x16,
   CycleCount = 0x17,
@@ -120,6 +120,6 @@ private:
   int file_;
 };
 
-} // namespace SBS
+}  // namespace SBS
 
 #endif  // SMART_BATTERY_DRIVER__SBS_HPP_

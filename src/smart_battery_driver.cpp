@@ -15,6 +15,7 @@
 #include <chrono>
 #include <cstdio>
 #include <memory>
+#include <string>
 #include <utility>
 
 #include "rclcpp/rclcpp.hpp"
@@ -64,14 +65,14 @@ public:
 private:
   uint8_t interpret_status(int status, float current) const
   {
-    using namespace sensor_msgs::msg;
-    using namespace SBS;
-    if (status & int(BatteryStatus::Discharging)) {
+    using sensor_msgs::msg::BatteryState;
+    using SBS::BatteryStatus;
+    if (status & static_cast<int>(BatteryStatus::Discharging)) {
       return BatteryState::POWER_SUPPLY_STATUS_DISCHARGING;
     }
     // TODO(ek) figure out what this condition means
     // return POWER_SUPPLY_STATUS_NOT_CHARGING;
-    if (status & int(BatteryStatus::FullyCharged)) {
+    if (status & static_cast<int>(BatteryStatus::FullyCharged)) {
       return BatteryState::POWER_SUPPLY_STATUS_FULL;
     }
     if (current > 0) {
@@ -83,8 +84,7 @@ private:
 
   uint8_t interpret_health(int status) const
   {
-    using namespace sensor_msgs::msg;
-    using namespace SBS;
+    using sensor_msgs::msg::BatteryState;
 
     if (status == 0) {}
 
@@ -93,7 +93,7 @@ private:
 
   uint8_t interpret_chemistry(const std::string & chemistry)
   {
-    using namespace sensor_msgs::msg;
+    using sensor_msgs::msg::BatteryState;
     std::string lower(chemistry);
     std::transform(
       lower.begin(), lower.end(), lower.begin(),
@@ -130,7 +130,7 @@ private:
     std::string chemistry;
     battery_->cellChemistry(chemistry);
     msg_->power_supply_technology = interpret_chemistry(chemistry);
-    // TODO detect case when it's not
+    // TODO(ek) detect case when it's not
     msg_->present = true;
     // msg->cell_voltage =
     // msg->location =
