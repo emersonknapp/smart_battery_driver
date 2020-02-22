@@ -22,6 +22,7 @@ find_package(sensor_msgs REQUIRED)
 include_directories(include)
 
 add_executable(${PROJECT_NAME} src/smart_battery_driver.cpp src/sbs.cpp)
+target_link_libraries(${PROJECT_NAME} i2c)
 ament_target_dependencies(${PROJECT_NAME}
   "rclcpp"
   "sensor_msgs"

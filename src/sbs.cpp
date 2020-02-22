@@ -5,47 +5,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <linux/i2c.h>
-#include <linux/i2c-dev.h>
-#include <i2c/smbus.h>
+
+extern "C" {
+  #include <linux/i2c.h>
+  #include <linux/i2c-dev.h>
+  #include <i2c/smbus.h>
+}
+
 #include "smart_battery_driver/sbs.hpp"
-enum class SBSCommand
+
+namespace SBS
 {
-  ManufacturerAccess = 0x00,
-  RemainingCapacityAlarm = 0x01,
-  RemainingTimeAlarm = 0x02,
-  BatteryMode = 0x03,
-  AtRate = 0x04,
-  AtRateTimeToFull = 0x05,
-  AtRateTimeToEmpty = 0x06,
-  AtRateOK = 0x07,
-  Temperature = 0x08,
-  Voltage = 0x09,
-  Current = 0x0a,
-  AverageCurrent = 0x0b,
-  MaxError = 0x0c,
-  RelativeStateOfCharge = 0x0d,
-  AbsoluteStateOfCharge = 0x0e,
-  RemainingCapacity = 0x0f,
-  FullChargeCapacity = 0x10,
-  RunTimeToEmpty = 0x11,
-  AverageTimeToEmpty = 0x12,
-  AverageTimeToFull = 0x13,
-  ChargingCurrent= 0x14,
-  ChargingVoltage = 0x15,
-  BatteryStatus = 0x16,
-  CycleCount = 0x17,
-  DesignCapacity = 0x18,
-  DesignVoltage = 0x19,
-  SpecificationInfo = 0x1a,
-  ManufactureDate = 0x1b,
-  SerialNumber = 0x1c,
-  // 0x1d-0x1f reserved
-  ManufacturerName = 0x20,
-  DeviceName = 0x21,
-  CellChemistry = 0x22,
-  ManufacturerData = 0x23,
-};
 
 #define MISSING_FUNC_FMT        "Error: Adapter does not have %s capability\n"
 
@@ -85,38 +55,6 @@ int check_smbus_capabilities(int file)
 
 }
 
-int parse_i2c_bus(const char * i2cbus_arg)
-{
-  unsigned long i2cbus;
-  char * end;
-  i2cbus = strtoul(i2cbus_arg, &end, 0);
-  if (*end || !*i2cbus_arg) {
-    fprintf(stderr, "Error: I2C bus not a number!\n");
-    return -1;
-  }
-  if (i2cbus > 0xFFFFF) {
-    fprintf(stderr, "Error: I2C bus out of range!\n");
-    return -2;
-  }
-  return i2cbus;
-}
-
-int parse_i2c_address(const char * address_arg)
-{
-  long address;
-  char * end;
-  address = strtol(address_arg, &end, 0);
-  if (*end || !*address_arg) {
-    fprintf(stderr, "Error: device address is not a number\n");
-    return -1;
-  }
-  if (address < 0x03 || address > 0x77) {
-    fprintf(stderr, "Error: device address out of range (0x03-0x77)\n");
-    return -2;
-  }
-  return address;
-}
-
 int open_i2c_dev(int i2cbus, char * filename, size_t size, bool quiet)
 {
   int file;
@@ -150,8 +88,6 @@ int open_i2c_dev(int i2cbus, char * filename, size_t size, bool quiet)
 
 int set_i2c_slave_addr(int file, int address, int force)
 {
-  /* With force, let the user read from/write to the registers
-     even when a driver is also running */
   if (ioctl(file, force ? I2C_SLAVE_FORCE : I2C_SLAVE, address) < 0) {
     fprintf(
       stderr,
@@ -183,7 +119,7 @@ SmartBattery::SmartBattery(unsigned int i2cbus, unsigned int address)
     check_smbus_capabilities(file_) ||
     set_i2c_slave_addr(file_, address_, false))
   {
-    throw "Eep!";
+    throw "Couldn't open battery device.";
   }
 
   if (ioctl(file_, I2C_PEC, 1) < 0) {
@@ -192,3 +128,67 @@ SmartBattery::SmartBattery(unsigned int i2cbus, unsigned int address)
     throw "Could not set PEC";
   }
 }
+
+bool SmartBattery::cellChemistry(std::string & data) const
+{
+  data.resize(32);
+  unsigned char * buf = (unsigned char *)&data[0];
+  int res = i2c_smbus_read_block_data(file_, 0x22, buf);
+  if (res < 0) {
+    fprintf(stderr, "Error: Read Failed\n");
+    return false;
+  }
+  data.resize(res);
+  return true;
+}
+
+int SmartBattery::readWord(SBSCommand command) const
+{
+  int res = i2c_smbus_read_word_data(file_, (int)command);
+  if (res < 0) {
+    fprintf(stderr, "Error: Read failed\n");
+  }
+  return res;
+}
+
+int SmartBattery::voltage() const
+{
+  return readWord(SBSCommand::Voltage);
+}
+
+int16_t SmartBattery::current() const
+{
+  return readWord(SBSCommand::Current);
+}
+
+int SmartBattery::fullChargeCapacity() const
+{
+  return readWord(SBSCommand::FullChargeCapacity);
+}
+
+int SmartBattery::designCapacity() const
+{
+  return readWord(SBSCommand::DesignCapacity);
+}
+
+int SmartBattery::relativeStateOfCharge() const
+{
+  return readWord(SBSCommand::RelativeStateOfCharge);
+}
+
+int SmartBattery::batteryStatus() const
+{
+  return readWord(SBSCommand::BatteryStatus);
+}
+
+int SmartBattery::serialNumber() const
+{
+  return readWord(SBSCommand::SerialNumber);
+}
+
+float SmartBattery::temperature() const
+{
+  return (readWord(SBSCommand::Temperature) * 0.1) - 273.15;
+}
+
+}  // namespace sbs

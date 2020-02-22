@@ -29,10 +29,11 @@ using namespace std::chrono_literals;
 namespace smart_battery_driver
 {
 
+typedef std::unique_ptr<sensor_msgs::msg::BatteryState> BatteryMsg;
+
 class SmartBatteryDriver : public rclcpp::Node
 {
 public:
-  SMART_BATTERY_DRIVER_PUBLIC
   explicit SmartBatteryDriver(const rclcpp::NodeOptions & options)
   : Node("smart_battery_driver", options)
   {
@@ -51,7 +52,7 @@ public:
     int i2c_bus = get_parameter("i2c_bus").as_int();
     int battery_address = get_parameter("battery_address").as_int();
 
-    battery_ = std::make_shared<SmartBattery>(i2c_bus, battery_address);
+    battery_ = std::make_unique<SBS::SmartBattery>(i2c_bus, battery_address);
 
     rclcpp::QoS qos(rclcpp::KeepLast(5));
     pub_ = this->create_publisher<sensor_msgs::msg::BatteryState>("battery_state", qos);
@@ -61,19 +62,86 @@ public:
   }
 
 private:
+  uint8_t interpret_status(int status, float current) const
+  {
+    using namespace sensor_msgs::msg;
+    using namespace SBS;
+    if (status & int(BatteryStatus::Discharging)) {
+      return BatteryState::POWER_SUPPLY_STATUS_DISCHARGING;
+    }
+    // TODO(ek) figure out what this condition means
+    // return POWER_SUPPLY_STATUS_NOT_CHARGING;
+    if (status & int(BatteryStatus::FullyCharged)) {
+      return BatteryState::POWER_SUPPLY_STATUS_FULL;
+    }
+    if (current > 0) {
+      return BatteryState::POWER_SUPPLY_STATUS_CHARGING;
+    }
+
+    return BatteryState::POWER_SUPPLY_STATUS_UNKNOWN;
+  }
+
+  uint8_t interpret_health(int status) const
+  {
+    using namespace sensor_msgs::msg;
+    using namespace SBS;
+
+    if (status == 0) {}
+
+    return BatteryState::POWER_SUPPLY_HEALTH_UNKNOWN;
+  }
+
+  uint8_t interpret_chemistry(const std::string & chemistry)
+  {
+    using namespace sensor_msgs::msg;
+    std::string lower(chemistry);
+    std::transform(
+      lower.begin(), lower.end(), lower.begin(),
+      [](unsigned char c) {return std::tolower(c);});
+    if (lower == "nimh") {
+      return BatteryState::POWER_SUPPLY_TECHNOLOGY_NIMH;
+    } else if (lower == "lion") {
+      return BatteryState::POWER_SUPPLY_TECHNOLOGY_LION;
+    } else if (lower == "lip") {
+      return BatteryState::POWER_SUPPLY_TECHNOLOGY_LIPO;
+    } else if (lower == "nicd") {
+      return BatteryState::POWER_SUPPLY_TECHNOLOGY_NICD;
+    }
+    return BatteryState::POWER_SUPPLY_TECHNOLOGY_UNKNOWN;
+  }
+
   void publish_battery_state()
   {
     msg_ = std::make_unique<sensor_msgs::msg::BatteryState>();
+    msg_->header.stamp = get_clock()->now();
+    msg_->voltage = battery_->voltage() / 1000.0;
+    msg_->temperature = battery_->temperature();
+    int16_t current = battery_->current();
+    msg_->current = battery_->current() / 1000.0;
+    msg_->charge = -msg_->current;
+    msg_->capacity = battery_->fullChargeCapacity() / 1000.0;
+    msg_->design_capacity = battery_->designCapacity() / 1000.0;
+    msg_->percentage = battery_->relativeStateOfCharge() / 100.0;
 
-    RCLCPP_INFO(get_logger(), "Publishing!");
+    int status = battery_->batteryStatus();
+    msg_->power_supply_status = interpret_status(status, msg_->current);
+    msg_->power_supply_health = interpret_health(status);
+
+    std::string chemistry;
+    battery_->cellChemistry(chemistry);
+    msg_->power_supply_technology = interpret_chemistry(chemistry);
+    // TODO detect case when it's not
+    msg_->present = true;
+    // msg->cell_voltage =
+    // msg->location =
+    msg_->serial_number = std::to_string(battery_->serialNumber());
     pub_->publish(std::move(msg_));
   }
 
-  size_t count_ = 1;
-  std::unique_ptr<sensor_msgs::msg::BatteryState> msg_;
+  BatteryMsg msg_;
   rclcpp::Publisher<sensor_msgs::msg::BatteryState>::SharedPtr pub_;
   rclcpp::TimerBase::SharedPtr timer_;
-  std::shared_ptr<SmartBattery> battery_;
+  std::unique_ptr<SBS::SmartBattery> battery_;
 };
 
 }  // namespace smart_battery_driver
