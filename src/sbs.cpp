@@ -34,10 +34,9 @@ namespace SBS
 
 #define MISSING_FUNC_FMT        "Error: Adapter does not have %s capability\n"
 
-int check_smbus_capabilities(int file)
+int check_smbus_capabilities(const int file)
 {
-  uint32_t funcs;
-
+  unsigned long funcs = 0;
   /* check adapter functionality */
   if (ioctl(file, I2C_FUNCS, &funcs) < 0) {
     fprintf(
@@ -45,7 +44,6 @@ int check_smbus_capabilities(int file)
       "functionality matrix: %s\n", strerror(errno));
     return -1;
   }
-
   if (!(funcs & I2C_FUNC_SMBUS_READ_BYTE)) {
     fprintf(stderr, MISSING_FUNC_FMT, "SMBus receive byte");
     return -1;
@@ -59,44 +57,26 @@ int check_smbus_capabilities(int file)
     fprintf(stderr, MISSING_FUNC_FMT, "SMBus read word");
     return -1;
   }
-
   if (!(funcs & (I2C_FUNC_SMBUS_PEC | I2C_FUNC_I2C))) {
     fprintf(
       stderr, "Warning: Adapter does "
       "not seem to support PEC\n");
   }
-
   return 0;
 }
 
-int open_i2c_dev(int i2cbus, char * filename, size_t size, bool quiet)
+int open_device(const char * filename)
 {
-  int file;
-  snprintf(filename, size, "/dev/i2c/%d", i2cbus);
-  filename[size - 1] = '\0';
-  file = open(filename, O_RDWR);
-
-  if (file < 0 && (errno == ENOENT || errno == ENOTDIR)) {
-    snprintf(filename, size, "/dev/i2c-%d", i2cbus);
-    filename[size - 1] = '\0';
-    file = open(filename, O_RDWR);
-  }
-
-  if (file < 0 && !quiet) {
-    if (errno == ENOENT) {
-      fprintf(
-        stderr, "Error: Could not open file "
-        "`/dev/i2c-%d' or `/dev/i2c/%d': %s\n",
-        i2cbus, i2cbus, strerror(ENOENT));
-    } else {
-      fprintf(
-        stderr, "Error: Could not open file "
-        "`%s': %s\n", filename, strerror(errno));
-      if (errno == EACCES) {
-        fprintf(stderr, "Run as root?\n");
-      }
+  int file = open(filename, O_RDWR);
+  printf("Got this %d\n", file);
+  if (file < 0) {
+    fprintf(
+      stderr, "Error: Could not open file %s: %s\n", filename, strerror(ENOENT));
+    if (errno == EACCES) {
+      fprintf(stderr, "Access problem, maybe run as root\n");
     }
   }
+  printf("Returning\n");
   return file;
 }
 
@@ -112,28 +92,22 @@ int set_i2c_slave_addr(int file, int address, int force)
   return 0;
 }
 
-
-SmartBattery::SmartBattery(unsigned int i2cbus, unsigned int address)
-: i2cbus_(i2cbus),
-  address_(address)
+SmartBattery::SmartBattery(const char * device_path, unsigned int address)
+: address_(address)
 {
-  if (i2cbus_ > 0xFFFFF) {
-    fprintf(stderr, "Error: I2C bus out of range!\n");
-    throw i2cbus_;
-  }
   if (address < 0x03 || address > 0x77) {
     fprintf(stderr, "Error: device address out of range (0x03-0x77)\n");
     throw address_;
   }
-
-  char filename[20];
-  file_ = open_i2c_dev(i2cbus_, filename, sizeof(filename), false);
-  if (
-    file_ < 0 ||
-    check_smbus_capabilities(file_) ||
-    set_i2c_slave_addr(file_, address_, false))
-  {
+  file_ = open_device(device_path);
+  if (file_ < 0) {
     throw "Couldn't open battery device.";
+  }
+  if (check_smbus_capabilities(file_)) {
+    throw "Bad capabilities";
+  }
+  if (set_i2c_slave_addr(file_, address_, false)) {
+    throw "Couldnt set addr";
   }
 
   if (ioctl(file_, I2C_PEC, 1) < 0) {

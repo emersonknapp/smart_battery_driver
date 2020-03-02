@@ -43,17 +43,17 @@ public:
     rcl_interfaces::msg::ParameterDescriptor descriptor;
     descriptor.read_only = true;
 
-    declare_parameter("i2c_bus", rclcpp::ParameterValue(), descriptor);
+    declare_parameter("device_path", rclcpp::ParameterValue(), descriptor);
     declare_parameter("battery_address", rclcpp::ParameterValue(), descriptor);
     declare_parameter("publish_frequency", 1.0);
 
     double publish_frequency = get_parameter("publish_frequency").as_double();
     std::chrono::duration<double> publish_period(1.0 / publish_frequency);
 
-    int i2c_bus = get_parameter("i2c_bus").as_int();
+    std::string device_path = get_parameter("device_path").as_string();
     int battery_address = get_parameter("battery_address").as_int();
 
-    battery_ = std::make_unique<SBS::SmartBattery>(i2c_bus, battery_address);
+    battery_ = std::make_unique<SBS::SmartBattery>(device_path.c_str(), battery_address);
 
     rclcpp::QoS qos(rclcpp::KeepLast(5));
     pub_ = this->create_publisher<sensor_msgs::msg::BatteryState>("battery_state", qos);

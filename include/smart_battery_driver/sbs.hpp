@@ -90,7 +90,8 @@ enum class BatteryStatusError : unsigned
 class SmartBattery
 {
 public:
-  SmartBattery(unsigned int i2cbus, unsigned int address);
+  SmartBattery(const char * device_path, unsigned int address);
+
   virtual ~SmartBattery() = default;
 
   bool manufacturerName(std::string & data) const;
@@ -116,7 +117,6 @@ public:
 
 private:
   int readWord(SBSCommand command) const;
-  int i2cbus_;
   int address_;
   int file_;
 };
