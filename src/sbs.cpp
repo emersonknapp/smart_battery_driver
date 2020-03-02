@@ -36,7 +36,7 @@ namespace SBS
 
 int check_smbus_capabilities(const int file)
 {
-  unsigned long funcs = 0;
+  unsigned long funcs = 0; // NOLINT - the ioctl signature uses this exact type, so we should too
   /* check adapter functionality */
   if (ioctl(file, I2C_FUNCS, &funcs) < 0) {
     fprintf(
