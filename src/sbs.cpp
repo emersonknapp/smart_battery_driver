@@ -121,7 +121,7 @@ bool SmartBattery::cellChemistry(std::string & data) const
   unsigned char * buf = (unsigned char *)&data[0];
   int res = i2c_smbus_read_block_data(file_, 0x22, buf);
   if (res < 0) {
-    fprintf(stderr, "Error: Read Failed\n");
+    fprintf(stderr, "Error: Read failed\n");
     return false;
   }
   data.resize(res);
