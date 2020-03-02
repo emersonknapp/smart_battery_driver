@@ -68,7 +68,6 @@ int check_smbus_capabilities(const int file)
 int open_device(const char * filename)
 {
   int file = open(filename, O_RDWR);
-  printf("Got this %d\n", file);
   if (file < 0) {
     fprintf(
       stderr, "Error: Could not open file %s: %s\n", filename, strerror(ENOENT));
@@ -76,7 +75,6 @@ int open_device(const char * filename)
       fprintf(stderr, "Access problem, maybe run as root\n");
     }
   }
-  printf("Returning\n");
   return file;
 }
 
