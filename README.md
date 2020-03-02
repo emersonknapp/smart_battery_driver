@@ -21,8 +21,8 @@ None.
 
 For help discovering these values, see following section `I2C Querying`
 
-* `~i2c_bus` (`int`, required)
-  * Integer number of the Linux I2C bus where the device can be found
+* `~device_path` (`str`, required)
+  * Filesystem device path of the i2c device (e.g. "/dev/i2c-7")
 * `~battery_address` (`int`, required)
   * 7-bit SMBus address of the Smart Battery
 * `~publish_frequency` (`float`, default: `1`)
@@ -71,7 +71,7 @@ i2c-0   unknown         i915 gmbus dpc                   N/A
 i2c-5   unknown         DPDDC-D                          N/A
 ```
 
-In the case of Tested Hardware Combination 1, `i2c-6` is the CP2112 bridge, so `~i2c_bus` parameter should be "6".
+In the case of Tested Hardware Combination 1, `i2c-6` is the CP2112 bridge, so `~device_path` parameter should be "/dev/i2c-6".
 
 
 ### Finding I2C Device Addresses
